@@ -175,7 +175,7 @@ export default function ProductFormModal({ restaurantId, categoryId, categories,
             <select
               value={selectedCatId}
               onChange={(e) => setSelectedCatId(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none"
             >
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
@@ -188,7 +188,7 @@ export default function ProductFormModal({ restaurantId, categoryId, categories,
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
             />
           </div>
 
@@ -199,7 +199,7 @@ export default function ProductFormModal({ restaurantId, categoryId, categories,
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 bg-white resize-none focus:outline-none focus:ring-2 focus:ring-yellow-400"
             />
           </div>
 
@@ -211,7 +211,7 @@ export default function ProductFormModal({ restaurantId, categoryId, categories,
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               placeholder="15000"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
             />
           </div>
 
@@ -285,7 +285,7 @@ export default function ProductFormModal({ restaurantId, categoryId, categories,
                     value={group.name}
                     onChange={(e) => updateGroup(gi, 'name', e.target.value)}
                     placeholder="Nombre del grupo"
-                    className="flex-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm"
+                    className="flex-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm text-gray-900 bg-white"
                   />
                   <button onClick={() => removeGroup(gi)}><Trash2 size={15} className="text-red-400" /></button>
                 </div>
@@ -297,7 +297,7 @@ export default function ProductFormModal({ restaurantId, categoryId, categories,
                       type="number"
                       value={group.max_quantity}
                       onChange={(e) => updateGroup(gi, 'max_quantity', e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm"
+                      className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-gray-900 bg-white"
                       min="1"
                     />
                   </div>
@@ -323,14 +323,14 @@ export default function ProductFormModal({ restaurantId, categoryId, categories,
                         value={item.name}
                         onChange={(e) => updateItem(gi, ii, 'name', e.target.value)}
                         placeholder="Nombre"
-                        className="flex-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs"
+                        className="flex-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-900 bg-white"
                       />
                       <input
                         type="number"
                         value={item.price}
                         onChange={(e) => updateItem(gi, ii, 'price', e.target.value)}
                         placeholder="Precio"
-                        className="w-20 border border-gray-200 rounded-lg px-2 py-1.5 text-xs"
+                        className="w-20 border border-gray-200 rounded-lg px-2 py-1.5 text-xs text-gray-900 bg-white"
                       />
                       <button onClick={() => removeItem(gi, ii)}><X size={13} className="text-gray-400" /></button>
                     </div>
