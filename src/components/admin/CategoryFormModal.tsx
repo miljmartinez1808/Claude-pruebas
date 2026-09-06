@@ -61,7 +61,7 @@ export default function CategoryFormModal({ restaurantId, category, onClose, onS
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Ej: Hamburguesas"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
           />
           {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
         </div>
