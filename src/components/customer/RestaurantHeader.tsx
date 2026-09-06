@@ -2,7 +2,7 @@
 
 import { MapPin, Clock } from 'lucide-react'
 import { Restaurant } from '@/types'
-import { isRestaurantOpen } from '@/lib/utils'
+import { isRestaurantOpen, getTodayHoursLabel } from '@/lib/utils'
 import Image from 'next/image'
 
 interface Props {
@@ -10,7 +10,17 @@ interface Props {
 }
 
 export default function RestaurantHeader({ restaurant }: Props) {
-  const open = isRestaurantOpen(restaurant.hours_open, restaurant.hours_close, restaurant.is_open)
+  const open = isRestaurantOpen(
+    restaurant.hours_open,
+    restaurant.hours_close,
+    restaurant.is_open,
+    restaurant.business_hours
+  )
+  const hoursLabel = getTodayHoursLabel(
+    restaurant.business_hours,
+    restaurant.hours_open,
+    restaurant.hours_close
+  )
 
   return (
     <div>
@@ -45,7 +55,7 @@ export default function RestaurantHeader({ restaurant }: Props) {
 
       {/* Info card — logo centered on banner/info boundary */}
       <div className="relative bg-white px-4 pb-4 pt-14">
-        {/* Logo — top-0 -translate-y-1/2 = center is at banner bottom */}
+        {/* Logo — centered at banner/info edge */}
         <div className="absolute top-0 left-4 -translate-y-1/2 w-20 h-20 rounded-full border-4 border-white bg-white shadow-md overflow-hidden">
           {restaurant.logo_url ? (
             <Image
@@ -76,9 +86,9 @@ export default function RestaurantHeader({ restaurant }: Props) {
               <MapPin size={14} /> {restaurant.address}
             </span>
           )}
-          {restaurant.hours_open && restaurant.hours_close && (
-            <span className="flex items-center gap-1">
-              <Clock size={14} /> {restaurant.hours_open} - {restaurant.hours_close}
+          {hoursLabel && (
+            <span className={`flex items-center gap-1 ${hoursLabel === 'Cerrado hoy' ? 'text-red-400' : ''}`}>
+              <Clock size={14} /> {hoursLabel}
             </span>
           )}
         </div>

@@ -2,9 +2,8 @@
 
 import { useEffect, useState, use, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Restaurant } from '@/types'
+import { Restaurant, BusinessHours, DaySchedule } from '@/types'
 import { Save, Store, Clock, CreditCard, Link2, ImagePlus, Loader2, X } from 'lucide-react'
-import Image from 'next/image'
 
 // ─── Sub-components defined OUTSIDE to avoid remount on every keystroke ────────
 
@@ -45,28 +44,15 @@ function Input({ value, onChange, placeholder, type = 'text' }: {
   )
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const COLORS = [
-  { label: 'Amarillo', value: '#FBBF24' },
-  { label: 'Rojo',     value: '#EF4444' },
-  { label: 'Verde',    value: '#22C55E' },
-  { label: 'Azul',     value: '#3B82F6' },
-  { label: 'Naranja',  value: '#F97316' },
-  { label: 'Violeta',  value: '#8B5CF6' },
-  { label: 'Rosa',     value: '#EC4899' },
-  { label: 'Negro',    value: '#111827' },
-]
-
-// ─── Image upload field (logo / banner) ───────────────────────────────────────
+// ─── Image upload field ────────────────────────────────────────────────────────
 
 interface ImageUploadFieldProps {
   label: string
   url: string
   onChange: (url: string) => void
   restaurantId: string
-  pathKey: string          // e.g. 'logo' | 'banner'
-  aspectClass?: string     // Tailwind class for height, e.g. 'h-28' | 'h-16 w-16'
+  pathKey: string
+  aspectClass?: string
   rounded?: boolean
 }
 
@@ -108,45 +94,62 @@ function ImageUploadField({
       {url ? (
         <div className="relative inline-block">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={url}
-            alt={label}
-            className={`${aspectClass} ${roundedClass} object-cover border border-gray-200`}
-          />
+          <img src={url} alt={label} className={`${aspectClass} ${roundedClass} object-cover border border-gray-200`} />
           <div className={`absolute inset-0 flex items-center justify-center gap-2 bg-black/40 ${roundedClass} opacity-0 hover:opacity-100 transition-opacity`}>
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-              className="bg-white text-gray-800 text-xs font-semibold px-3 py-1.5 rounded-lg shadow"
-            >
+            <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+              className="bg-white text-gray-800 text-xs font-semibold px-3 py-1.5 rounded-lg shadow">
               {uploading ? 'Subiendo...' : 'Cambiar'}
             </button>
-            <button
-              type="button"
-              onClick={() => onChange('')}
-              className="bg-red-500 text-white text-xs font-semibold p-1.5 rounded-lg shadow"
-            >
+            <button type="button" onClick={() => onChange('')}
+              className="bg-red-500 text-white text-xs font-semibold p-1.5 rounded-lg shadow">
               <X size={14} />
             </button>
           </div>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          className={`w-full ${aspectClass} border-2 border-dashed border-gray-200 ${roundedClass} flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-gray-300 hover:text-gray-500 transition-colors`}
-        >
-          {uploading
-            ? <Loader2 size={20} className="animate-spin" />
-            : <ImagePlus size={20} />
-          }
+        <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+          className={`w-full ${aspectClass} border-2 border-dashed border-gray-200 ${roundedClass} flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-gray-300 hover:text-gray-500 transition-colors`}>
+          {uploading ? <Loader2 size={20} className="animate-spin" /> : <ImagePlus size={20} />}
           <span className="text-xs">{uploading ? 'Subiendo...' : 'Toca para subir imagen'}</span>
         </button>
       )}
     </Field>
   )
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const COLORS = [
+  { label: 'Amarillo', value: '#FBBF24' },
+  { label: 'Rojo',     value: '#EF4444' },
+  { label: 'Verde',    value: '#22C55E' },
+  { label: 'Azul',     value: '#3B82F6' },
+  { label: 'Naranja',  value: '#F97316' },
+  { label: 'Violeta',  value: '#8B5CF6' },
+  { label: 'Rosa',     value: '#EC4899' },
+  { label: 'Negro',    value: '#111827' },
+]
+
+const DAYS: { key: keyof BusinessHours; label: string; short: string }[] = [
+  { key: 'mon', label: 'Lunes',     short: 'L' },
+  { key: 'tue', label: 'Martes',    short: 'M' },
+  { key: 'wed', label: 'Miércoles', short: 'X' },
+  { key: 'thu', label: 'Jueves',    short: 'J' },
+  { key: 'fri', label: 'Viernes',   short: 'V' },
+  { key: 'sat', label: 'Sábado',    short: 'S' },
+  { key: 'sun', label: 'Domingo',   short: 'D' },
+]
+
+const DEFAULT_SCHEDULE: DaySchedule = { open: '08:00', close: '22:00', closed: false }
+
+const DEFAULT_BUSINESS_HOURS: BusinessHours = {
+  mon: { ...DEFAULT_SCHEDULE },
+  tue: { ...DEFAULT_SCHEDULE },
+  wed: { ...DEFAULT_SCHEDULE },
+  thu: { ...DEFAULT_SCHEDULE },
+  fri: { ...DEFAULT_SCHEDULE },
+  sat: { ...DEFAULT_SCHEDULE },
+  sun: { open: '08:00', close: '22:00', closed: true },
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -168,8 +171,6 @@ export default function ConfiguracionPage({ params }: Props) {
   const [address, setAddress] = useState('')
   const [phone, setPhone] = useState('')
   const [whatsapp, setWhatsapp] = useState('')
-  const [hoursOpen, setHoursOpen] = useState('')
-  const [hoursClose, setHoursClose] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [primaryColor, setPrimaryColor] = useState('#FBBF24')
   const [logoUrl, setLogoUrl] = useState('')
@@ -178,6 +179,7 @@ export default function ConfiguracionPage({ params }: Props) {
   const [nequiQrUrl, setNequiQrUrl] = useState('')
   const [bankAccount, setBankAccount] = useState('')
   const [paymentMethods, setPaymentMethods] = useState<string[]>(['efectivo'])
+  const [businessHours, setBusinessHours] = useState<BusinessHours>(DEFAULT_BUSINESS_HOURS)
 
   useEffect(() => {
     supabase.from('restaurants').select('*').eq('slug', slug).single().then(({ data }) => {
@@ -188,8 +190,6 @@ export default function ConfiguracionPage({ params }: Props) {
       setAddress(data.address || '')
       setPhone(data.phone || '')
       setWhatsapp(data.whatsapp_number || '')
-      setHoursOpen(data.hours_open || '')
-      setHoursClose(data.hours_close || '')
       setIsOpen(data.is_open)
       setPrimaryColor(data.primary_color || '#FBBF24')
       setLogoUrl(data.logo_url || '')
@@ -198,8 +198,31 @@ export default function ConfiguracionPage({ params }: Props) {
       setNequiQrUrl(data.nequi_qr_url || '')
       setBankAccount(data.bank_account || '')
       setPaymentMethods(data.payment_methods || ['efectivo'])
+      // Load business_hours, fall back to building from hours_open/hours_close
+      if (data.business_hours) {
+        setBusinessHours(data.business_hours)
+      } else if (data.hours_open && data.hours_close) {
+        // Migrate: apply existing hours to all days except Sunday
+        const migrated: BusinessHours = {
+          mon: { open: data.hours_open, close: data.hours_close, closed: false },
+          tue: { open: data.hours_open, close: data.hours_close, closed: false },
+          wed: { open: data.hours_open, close: data.hours_close, closed: false },
+          thu: { open: data.hours_open, close: data.hours_close, closed: false },
+          fri: { open: data.hours_open, close: data.hours_close, closed: false },
+          sat: { open: data.hours_open, close: data.hours_close, closed: false },
+          sun: { open: data.hours_open, close: data.hours_close, closed: true },
+        }
+        setBusinessHours(migrated)
+      }
     })
   }, [slug]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const updateDay = (key: keyof BusinessHours, field: keyof DaySchedule, value: string | boolean) => {
+    setBusinessHours((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], [field]: value },
+    }))
+  }
 
   const togglePayment = (method: string) => {
     setPaymentMethods((prev) =>
@@ -216,8 +239,6 @@ export default function ConfiguracionPage({ params }: Props) {
       address: address.trim() || null,
       phone: phone.trim() || null,
       whatsapp_number: whatsapp.trim(),
-      hours_open: hoursOpen || null,
-      hours_close: hoursClose || null,
       is_open: isOpen,
       primary_color: primaryColor,
       logo_url: logoUrl.trim() || null,
@@ -226,6 +247,7 @@ export default function ConfiguracionPage({ params }: Props) {
       nequi_qr_url: nequiQrUrl.trim() || null,
       bank_account: bankAccount.trim() || null,
       payment_methods: paymentMethods,
+      business_hours: businessHours,
     }).eq('id', restaurant.id)
     setSaving(false)
     setSaved(true)
@@ -275,7 +297,7 @@ export default function ConfiguracionPage({ params }: Props) {
         <div className="flex items-center justify-between mb-4 p-3 bg-gray-50 rounded-lg">
           <div>
             <p className="font-medium text-sm text-gray-800">Estado del negocio</p>
-            <p className="text-xs text-gray-500">Tus clientes verán si estás abierto o cerrado</p>
+            <p className="text-xs text-gray-500">Activa para permitir pedidos (independiente del horario)</p>
           </div>
           <button
             onClick={() => setIsOpen(!isOpen)}
@@ -304,15 +326,51 @@ export default function ConfiguracionPage({ params }: Props) {
         </Field>
       </Section>
 
-      {/* Horario */}
+      {/* Horario por día */}
       <Section icon={Clock} title="Horario de atención">
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Hora apertura">
-            <Input value={hoursOpen} onChange={setHoursOpen} type="time" />
-          </Field>
-          <Field label="Hora cierre">
-            <Input value={hoursClose} onChange={setHoursClose} type="time" />
-          </Field>
+        <p className="text-xs text-gray-400 mb-3">Configura el horario para cada día. Los días marcados como cerrado no recibirán pedidos ese día.</p>
+        <div className="flex flex-col gap-2">
+          {DAYS.map(({ key, label }) => {
+            const day = businessHours[key]
+            return (
+              <div key={key} className={`rounded-lg border p-3 transition-colors ${day.closed ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-200'}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`font-medium text-sm ${day.closed ? 'text-gray-400' : 'text-gray-800'}`}>{label}</span>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-xs">
+                    <input
+                      type="checkbox"
+                      checked={day.closed}
+                      onChange={(e) => updateDay(key, 'closed', e.target.checked)}
+                      className="accent-red-400 w-4 h-4"
+                    />
+                    <span className={day.closed ? 'text-red-400 font-semibold' : 'text-gray-400'}>Cerrado</span>
+                  </label>
+                </div>
+                {!day.closed && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-xs text-gray-400 mb-1">Apertura</p>
+                      <input
+                        type="time"
+                        value={day.open}
+                        onChange={(e) => updateDay(key, 'open', e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 mb-1">Cierre</p>
+                      <input
+                        type="time"
+                        value={day.close}
+                        onChange={(e) => updateDay(key, 'close', e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       </Section>
 
@@ -377,12 +435,18 @@ export default function ConfiguracionPage({ params }: Props) {
         </Field>
         {paymentMethods.includes('transferencia') && (
           <>
-            <Field label="Número Nequi">
+            <Field label="Número Nequi / Daviplata">
               <Input value={nequiNumber} onChange={setNequiNumber} placeholder="3001234567" />
             </Field>
-            <Field label="URL del QR de Nequi (opcional)">
-              <Input value={nequiQrUrl} onChange={setNequiQrUrl} placeholder="https://..." />
-            </Field>
+            <ImageUploadField
+              label="QR de Nequi / Daviplata"
+              url={nequiQrUrl}
+              onChange={setNequiQrUrl}
+              restaurantId={restaurant.id}
+              pathKey="nequi-qr"
+              aspectClass="h-48 w-48"
+              rounded={false}
+            />
             <Field label="Datos bancarios (opcional)">
               <Input value={bankAccount} onChange={setBankAccount} placeholder="Bancolombia 123-456789-00" />
             </Field>

@@ -1,3 +1,5 @@
+import { BusinessHours } from '@/types'
+
 // ─── Formatting helpers ───────────────────────────────────────────────────────
 
 export function formatCurrency(amount: number): string {
@@ -15,18 +17,35 @@ export function formatOrderNumber(num: number): string {
 
 // ─── Restaurant helpers ───────────────────────────────────────────────────────
 
+// Day keys indexed by JS getDay() (0=Sun, 1=Mon, ...)
+const DAY_KEYS: (keyof BusinessHours)[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+
 export function isRestaurantOpen(
   hoursOpen: string | null,
   hoursClose: string | null,
-  isOpenFlag: boolean
+  isOpenFlag: boolean,
+  businessHours?: BusinessHours | null
 ): boolean {
   if (!isOpenFlag) return false
-  if (!hoursOpen || !hoursClose) return isOpenFlag
 
   const now = new Date()
-  const [openH, openM] = hoursOpen.split(':').map(Number)
-  const [closeH, closeM] = hoursClose.split(':').map(Number)
 
+  if (businessHours) {
+    const todayKey = DAY_KEYS[now.getDay()]
+    const today = businessHours[todayKey]
+    if (!today || today.closed) return false
+    if (!today.open || !today.close) return true
+    return isInTimeRange(today.open, today.close, now)
+  }
+
+  // Fallback to simple hours_open / hours_close
+  if (!hoursOpen || !hoursClose) return isOpenFlag
+  return isInTimeRange(hoursOpen, hoursClose, now)
+}
+
+function isInTimeRange(open: string, close: string, now: Date): boolean {
+  const [openH, openM] = open.split(':').map(Number)
+  const [closeH, closeM] = close.split(':').map(Number)
   const openMinutes = openH * 60 + openM
   const closeMinutes = closeH * 60 + closeM
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
@@ -36,6 +55,20 @@ export function isRestaurantOpen(
     return nowMinutes >= openMinutes || nowMinutes < closeMinutes
   }
   return nowMinutes >= openMinutes && nowMinutes < closeMinutes
+}
+
+/** Returns today's schedule label, e.g. "09:00 - 22:00" or null */
+export function getTodayHoursLabel(businessHours: BusinessHours | null, hoursOpen: string | null, hoursClose: string | null): string | null {
+  if (businessHours) {
+    const now = new Date()
+    const todayKey = DAY_KEYS[now.getDay()]
+    const today = businessHours[todayKey]
+    if (!today || today.closed) return 'Cerrado hoy'
+    if (today.open && today.close) return `${today.open} - ${today.close}`
+    return null
+  }
+  if (hoursOpen && hoursClose) return `${hoursOpen} - ${hoursClose}`
+  return null
 }
 
 // ─── WhatsApp message builder ─────────────────────────────────────────────────

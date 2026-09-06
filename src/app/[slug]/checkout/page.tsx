@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { use } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ChevronDown } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Copy, Check, ZoomIn } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Restaurant, CartItem } from '@/types'
 import { formatCurrency, buildWhatsAppMessage, buildWhatsAppUrl } from '@/lib/utils'
@@ -37,6 +37,8 @@ export default function CheckoutPage({ params }: Props) {
   const [showPaymentOptions, setShowPaymentOptions] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [qrFull, setQrFull] = useState(false)
 
   useEffect(() => {
     supabase.from('restaurants').select('*').eq('slug', slug).single().then(({ data }) => {
@@ -48,11 +50,18 @@ export default function CheckoutPage({ params }: Props) {
       const dt = localStorage.getItem(`delivery_${slug}`)
       if (dt) setDeliveryType(dt as DeliveryType)
     } catch {}
-  }, [slug])
+  }, [slug]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const total = cartItems.reduce((sum, i) => sum + i.subtotal, 0)
   const primaryColor = restaurant?.primary_color || '#FBBF24'
   const paymentOptions = restaurant?.payment_methods || ['efectivo']
+
+  const handleCopyNequi = () => {
+    if (!restaurant?.nequi_number) return
+    navigator.clipboard.writeText(restaurant.nequi_number)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2500)
+  }
 
   const validate = () => {
     const errs: Record<string, string> = {}
@@ -70,13 +79,11 @@ export default function CheckoutPage({ params }: Props) {
 
     setSubmitting(true)
     try {
-      // Get next order number
       const { data: nextNum } = await supabase.rpc('next_order_number', {
         p_restaurant_id: restaurant.id,
       })
       const orderNumber = nextNum || Math.floor(Math.random() * 90000000 + 10000000)
 
-      // Insert order
       const { data: order, error: orderErr } = await supabase
         .from('orders')
         .insert({
@@ -97,7 +104,6 @@ export default function CheckoutPage({ params }: Props) {
 
       if (orderErr || !order) throw orderErr
 
-      // Insert order items
       for (const item of cartItems) {
         const { data: oi } = await supabase
           .from('order_items')
@@ -125,10 +131,8 @@ export default function CheckoutPage({ params }: Props) {
         }
       }
 
-      // Clear cart
       try { localStorage.removeItem(CART_KEY(slug)) } catch {}
 
-      // Build WhatsApp message
       const msg = buildWhatsAppMessage({
         orderNumber,
         restaurantName: restaurant.name,
@@ -173,186 +177,259 @@ export default function CheckoutPage({ params }: Props) {
   }
 
   const paymentLabel = paymentMethod === 'efectivo' ? 'Efectivo' : paymentMethod === 'transferencia' ? 'Transferencia' : ''
+  const hasTransferInfo = restaurant.nequi_number || restaurant.nequi_qr_url || restaurant.bank_account
 
   return (
-    <div className="min-h-screen bg-white pb-32">
-      {/* Restaurant header strip */}
-      <div className="relative h-28 bg-gray-800">
-        {restaurant.banner_url && (
-          <Image src={restaurant.banner_url} alt={restaurant.name} fill className="object-cover opacity-60" />
-        )}
-        <Link href={`/${slug}/carrito`} className="absolute top-3 left-3 bg-white/20 p-2 rounded-full">
-          <ArrowLeft size={18} className="text-white" />
-        </Link>
-        {/* Logo */}
-        <div className="absolute -bottom-8 left-4 w-16 h-16 rounded-full border-4 border-white bg-white shadow overflow-hidden">
-          {restaurant.logo_url ? (
-            <Image src={restaurant.logo_url} alt="logo" width={64} height={64} className="object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white"
-              style={{ background: primaryColor }}>
-              {restaurant.name.charAt(0)}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Form */}
-      <div className="pt-12 px-4">
-        <h1 className="text-lg font-bold text-gray-900 mb-1">{restaurant.name}</h1>
-        <h2 className="text-base font-semibold text-gray-700 mb-4">Confirmando Orden</h2>
-
-        {/* Name */}
-        <div className="relative mb-3">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">👤</span>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Tu nombre"
-            className={`w-full border rounded-lg pl-9 pr-4 py-3 text-sm text-gray-900 bg-white focus:outline-none ${errors.name ? 'border-red-400' : 'border-gray-200'}`}
+    <>
+      {/* ── QR full-screen lightbox ── */}
+      {qrFull && restaurant.nequi_qr_url && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-6"
+          onClick={() => setQrFull(false)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={restaurant.nequi_qr_url}
+            alt="QR de pago"
+            className="max-w-full max-h-full object-contain rounded-2xl"
           />
-          {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
-        </div>
-
-        {/* Phone */}
-        <div className="relative mb-3">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">📱</span>
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="Tu celular"
-            className={`w-full border rounded-lg pl-9 pr-4 py-3 text-sm text-gray-900 bg-white focus:outline-none ${errors.phone ? 'border-red-400' : 'border-gray-200'}`}
-          />
-          {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
-        </div>
-
-        {/* Address */}
-        {deliveryType === 'domicilio' && (
-          <div className="relative mb-3">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🏠</span>
-            <input
-              type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Tu dirección"
-              className={`w-full border rounded-lg pl-9 pr-4 py-3 text-sm text-gray-900 bg-white focus:outline-none ${errors.address ? 'border-red-400' : 'border-gray-200'}`}
-            />
-            {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address}</p>}
-          </div>
-        )}
-
-        {/* Payment method */}
-        <div className="relative mb-3">
           <button
-            onClick={() => setShowPaymentOptions(!showPaymentOptions)}
-            className={`w-full border rounded-lg px-4 py-3 text-sm text-left flex items-center justify-between ${errors.payment ? 'border-red-400' : 'border-gray-200'}`}
+            onClick={() => setQrFull(false)}
+            className="absolute top-4 right-4 bg-white/20 rounded-full p-2 text-white"
           >
-            <span className={paymentMethod ? 'text-gray-900' : 'text-gray-400'}>
-              {paymentLabel || 'Seleccione una forma de pago'}
-            </span>
-            <ChevronDown size={16} className="text-gray-400" />
+            <ArrowLeft size={20} />
           </button>
-          {errors.payment && <p className="text-red-500 text-xs mt-1">{errors.payment}</p>}
-
-          {showPaymentOptions && (
-            <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg z-20 mt-1">
-              {paymentOptions.includes('efectivo') && (
-                <button
-                  onClick={() => { setPaymentMethod('efectivo'); setShowPaymentOptions(false) }}
-                  className="w-full px-4 py-3 text-sm text-left hover:bg-gray-50 border-b border-gray-100"
-                >
-                  Efectivo
-                </button>
-              )}
-              {paymentOptions.includes('transferencia') && (
-                <button
-                  onClick={() => { setPaymentMethod('transferencia'); setShowPaymentOptions(false) }}
-                  className="w-full px-4 py-3 text-sm text-left hover:bg-gray-50"
-                >
-                  Transferencia
-                </button>
-              )}
-            </div>
-          )}
         </div>
+      )}
 
-        {/* Amount tendered (efectivo) */}
-        {paymentMethod === 'efectivo' && (
-          <div className="mb-3">
-            <input
-              type="number"
-              value={amountTendered}
-              onChange={(e) => setAmountTendered(e.target.value)}
-              placeholder="¿Con cuánto paga? (opcional)"
-              className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none"
-            />
-          </div>
-        )}
-
-        {/* Nequi info (transferencia) */}
-        {paymentMethod === 'transferencia' && (restaurant.nequi_number || restaurant.nequi_qr_url || restaurant.bank_account) && (
-          <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <p className="font-semibold text-sm text-green-800 mb-1">Datos de pago:</p>
-            {restaurant.nequi_number && (
-              <p className="text-sm text-green-700">🟢 Nequi: <strong>{restaurant.nequi_number}</strong></p>
-            )}
-            {restaurant.bank_account && (
-              <p className="text-sm text-green-700 mt-1">🏦 {restaurant.bank_account}</p>
-            )}
-            {restaurant.nequi_qr_url && (
-              <div className="mt-2">
-                <Image src={restaurant.nequi_qr_url} alt="QR Nequi" width={120} height={120} className="rounded-lg" />
+      <div className="min-h-screen bg-white pb-32">
+        {/* Restaurant header strip */}
+        <div className="relative h-28 bg-gray-800">
+          {restaurant.banner_url && (
+            <Image src={restaurant.banner_url} alt={restaurant.name} fill className="object-cover opacity-60" />
+          )}
+          <Link href={`/${slug}/carrito`} className="absolute top-3 left-3 bg-white/20 p-2 rounded-full">
+            <ArrowLeft size={18} className="text-white" />
+          </Link>
+          <div className="absolute -bottom-8 left-4 w-16 h-16 rounded-full border-4 border-white bg-white shadow overflow-hidden">
+            {restaurant.logo_url ? (
+              <Image src={restaurant.logo_url} alt="logo" width={64} height={64} className="object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white"
+                style={{ background: primaryColor }}>
+                {restaurant.name.charAt(0)}
               </div>
             )}
-            <p className="text-xs text-green-600 mt-2">Total a pagar: <strong>{formatCurrency(total)}</strong></p>
           </div>
-        )}
-
-        {/* Comment */}
-        <div className="mb-4">
-          <textarea
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="Ingrese un comentario(opcional)"
-            rows={3}
-            className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-900 bg-white resize-none focus:outline-none"
-          />
         </div>
 
-        <p className="text-xs text-gray-400 mb-4">
-          Al dar click en enviar, aceptas nuestros{' '}
-          <span style={{ color: primaryColor }} className="font-medium">Términos y condiciones</span>
-          {' '}y las{' '}
-          <span style={{ color: primaryColor }} className="font-medium">políticas de privacidad</span>.
+        {/* Form */}
+        <div className="pt-12 px-4">
+          <h1 className="text-lg font-bold text-gray-900 mb-1">{restaurant.name}</h1>
+          <h2 className="text-base font-semibold text-gray-700 mb-4">Confirmando Orden</h2>
+
+          {/* Name */}
+          <div className="relative mb-3">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">👤</span>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Tu nombre"
+              className={`w-full border rounded-lg pl-9 pr-4 py-3 text-sm text-gray-900 bg-white focus:outline-none ${errors.name ? 'border-red-400' : 'border-gray-200'}`}
+            />
+            {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+          </div>
+
+          {/* Phone */}
+          <div className="relative mb-3">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">📱</span>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Tu celular"
+              className={`w-full border rounded-lg pl-9 pr-4 py-3 text-sm text-gray-900 bg-white focus:outline-none ${errors.phone ? 'border-red-400' : 'border-gray-200'}`}
+            />
+            {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
+          </div>
+
+          {/* Address */}
+          {deliveryType === 'domicilio' && (
+            <div className="relative mb-3">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🏠</span>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Tu dirección"
+                className={`w-full border rounded-lg pl-9 pr-4 py-3 text-sm text-gray-900 bg-white focus:outline-none ${errors.address ? 'border-red-400' : 'border-gray-200'}`}
+              />
+              {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address}</p>}
+            </div>
+          )}
+
+          {/* Payment method */}
+          <div className="relative mb-3">
+            <button
+              onClick={() => setShowPaymentOptions(!showPaymentOptions)}
+              className={`w-full border rounded-lg px-4 py-3 text-sm text-left flex items-center justify-between bg-white ${errors.payment ? 'border-red-400' : 'border-gray-200'}`}
+            >
+              <span className={paymentMethod ? 'text-gray-900' : 'text-gray-400'}>
+                {paymentLabel || 'Seleccione una forma de pago'}
+              </span>
+              <ChevronDown size={16} className="text-gray-400" />
+            </button>
+            {errors.payment && <p className="text-red-500 text-xs mt-1">{errors.payment}</p>}
+
+            {showPaymentOptions && (
+              <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg z-20 mt-1">
+                {paymentOptions.includes('efectivo') && (
+                  <button
+                    onClick={() => { setPaymentMethod('efectivo'); setShowPaymentOptions(false) }}
+                    className="w-full px-4 py-3 text-sm text-left text-gray-900 hover:bg-gray-50 border-b border-gray-100"
+                  >
+                    💵 Efectivo
+                  </button>
+                )}
+                {paymentOptions.includes('transferencia') && (
+                  <button
+                    onClick={() => { setPaymentMethod('transferencia'); setShowPaymentOptions(false) }}
+                    className="w-full px-4 py-3 text-sm text-left text-gray-900 hover:bg-gray-50"
+                  >
+                    🟢 Transferencia / Nequi
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Amount tendered (efectivo) */}
+          {paymentMethod === 'efectivo' && (
+            <div className="mb-3">
+              <input
+                type="number"
+                value={amountTendered}
+                onChange={(e) => setAmountTendered(e.target.value)}
+                placeholder="¿Con cuánto paga? (opcional)"
+                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none"
+              />
+            </div>
+          )}
+
+          {/* Transferencia info */}
+          {paymentMethod === 'transferencia' && hasTransferInfo && (
+            <div className="mb-4 rounded-2xl border border-green-200 bg-green-50 overflow-hidden">
+              {/* Header */}
+              <div className="px-4 pt-4 pb-2">
+                <p className="font-bold text-green-800 text-sm mb-3">📲 Datos para transferencia</p>
+
+                {/* Nequi number + copy */}
+                {restaurant.nequi_number && (
+                  <div className="flex items-center justify-between bg-white rounded-xl px-4 py-3 mb-3 border border-green-100">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-0.5">🟢 Número Nequi / Daviplata</p>
+                      <p className="text-lg font-bold text-gray-900 tracking-wide">{restaurant.nequi_number}</p>
+                    </div>
+                    <button
+                      onClick={handleCopyNequi}
+                      className="flex flex-col items-center gap-0.5 ml-3 flex-shrink-0"
+                    >
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${copied ? 'bg-green-500' : 'bg-green-100 hover:bg-green-200'}`}>
+                        {copied
+                          ? <Check size={18} className="text-white" />
+                          : <Copy size={18} className="text-green-700" />
+                        }
+                      </div>
+                      <span className={`text-xs font-medium ${copied ? 'text-green-600' : 'text-green-700'}`}>
+                        {copied ? '¡Copiado!' : 'Copiar'}
+                      </span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Bank account */}
+                {restaurant.bank_account && (
+                  <div className="bg-white rounded-xl px-4 py-2.5 mb-3 border border-green-100">
+                    <p className="text-xs text-gray-500 mb-0.5">🏦 Datos bancarios</p>
+                    <p className="text-sm font-semibold text-gray-800">{restaurant.bank_account}</p>
+                  </div>
+                )}
+
+                {/* Total to pay */}
+                <div className="flex items-center justify-between px-1 mb-1">
+                  <p className="text-sm text-green-700">Total a transferir</p>
+                  <p className="font-bold text-green-800 text-base">{formatCurrency(total)}</p>
+                </div>
+              </div>
+
+              {/* QR — full width, tappable */}
+              {restaurant.nequi_qr_url && (
+                <div
+                  className="relative cursor-pointer bg-white mx-4 mb-4 rounded-xl overflow-hidden border border-green-100"
+                  onClick={() => setQrFull(true)}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={restaurant.nequi_qr_url}
+                    alt="QR de pago"
+                    className="w-full object-contain"
+                    style={{ maxHeight: '280px' }}
+                  />
+                  {/* Tap hint */}
+                  <div className="absolute bottom-2 right-2 bg-black/40 rounded-full px-2 py-1 flex items-center gap-1">
+                    <ZoomIn size={12} className="text-white" />
+                    <span className="text-xs text-white">Ampliar</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Comment */}
+          <div className="mb-4">
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Ingrese un comentario (opcional)"
+              rows={3}
+              className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-900 bg-white resize-none focus:outline-none"
+            />
+          </div>
+
+          <p className="text-xs text-gray-400 mb-4">
+            Al dar click en enviar, aceptas nuestros{' '}
+            <span style={{ color: primaryColor }} className="font-medium">Términos y condiciones</span>
+            {' '}y las{' '}
+            <span style={{ color: primaryColor }} className="font-medium">políticas de privacidad</span>.
+          </p>
+        </div>
+
+        {/* Footer */}
+        <p className="text-center text-xs text-gray-400 mb-4">
+          Tecnología <span className="text-blue-400 font-medium">FastMenu</span>
         </p>
-      </div>
 
-      {/* Footer */}
-      <p className="text-center text-xs text-gray-400 mb-4">
-        Tecnología <span className="text-blue-400 font-medium">FastMenu</span>
-      </p>
-
-      {/* Bottom actions */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 flex flex-col gap-2">
-        <button
-          onClick={handleSend}
-          disabled={submitting}
-          className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl text-white font-semibold bg-green-500 hover:bg-green-600 disabled:opacity-60"
-        >
-          <span>📱</span>
-          {submitting ? 'Enviando...' : 'Enviar por WhatsApp'}
-        </button>
-        <Link
-          href={`/${slug}/carrito`}
-          className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl font-medium text-white"
-          style={{ background: primaryColor }}
-        >
-          <ArrowLeft size={16} />
-          Volver a la Orden
-        </Link>
+        {/* Bottom actions */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 flex flex-col gap-2">
+          <button
+            onClick={handleSend}
+            disabled={submitting}
+            className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl text-white font-semibold bg-green-500 hover:bg-green-600 disabled:opacity-60"
+          >
+            <span>📱</span>
+            {submitting ? 'Enviando...' : 'Enviar por WhatsApp'}
+          </button>
+          <Link
+            href={`/${slug}/carrito`}
+            className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl font-medium text-white"
+            style={{ background: primaryColor }}
+          >
+            <ArrowLeft size={16} />
+            Volver a la Orden
+          </Link>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

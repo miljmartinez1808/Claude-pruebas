@@ -1,5 +1,21 @@
 // ─── Database types ────────────────────────────────────────────────────────
 
+export interface DaySchedule {
+  open: string    // "09:00"
+  close: string   // "22:00"
+  closed: boolean
+}
+
+export interface BusinessHours {
+  mon: DaySchedule
+  tue: DaySchedule
+  wed: DaySchedule
+  thu: DaySchedule
+  fri: DaySchedule
+  sat: DaySchedule
+  sun: DaySchedule
+}
+
 export interface Restaurant {
   id: string
   slug: string
@@ -18,6 +34,7 @@ export interface Restaurant {
   nequi_qr_url: string | null
   bank_account: string | null
   payment_methods: string[] // ['efectivo', 'transferencia']
+  business_hours: BusinessHours | null
   created_at: string
 }
 
