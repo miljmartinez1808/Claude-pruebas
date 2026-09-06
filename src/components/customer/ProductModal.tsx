@@ -94,6 +94,24 @@ export default function ProductModal({ product, primaryColor, onClose, onAdd }: 
 
       {/* Sheet */}
       <div className="relative w-full max-w-lg bg-white rounded-t-2xl max-h-[90vh] flex flex-col">
+        {/* Product image */}
+        {product.image_url && (
+          <div className="relative w-full h-48 rounded-t-2xl overflow-hidden flex-shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={product.image_url}
+              alt={product.name}
+              className="w-full h-full object-cover"
+            />
+            <button
+              onClick={onClose}
+              className="absolute top-3 right-3 bg-black/40 rounded-full p-1.5 text-white"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-start justify-between p-4 pb-2">
           <div className="flex-1 pr-8">
@@ -102,12 +120,14 @@ export default function ProductModal({ product, primaryColor, onClose, onAdd }: 
               <p className="text-gray-500 text-sm mt-0.5">{product.description}</p>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="text-yellow-500 hover:text-yellow-600"
-          >
-            <X size={24} />
-          </button>
+          {!product.image_url && (
+            <button
+              onClick={onClose}
+              className="text-yellow-500 hover:text-yellow-600"
+            >
+              <X size={24} />
+            </button>
+          )}
         </div>
 
         {/* Scrollable content */}

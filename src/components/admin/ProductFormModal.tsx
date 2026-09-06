@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { X, Plus, Trash2 } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { X, Plus, Trash2, ImagePlus, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Category, Product } from '@/types'
 
@@ -38,7 +38,27 @@ export default function ProductFormModal({ restaurantId, categoryId, categories,
   const [imageUrl, setImageUrl] = useState(product?.image_url || '')
   const [addonGroups, setAddonGroups] = useState<AddonGroupDraft[]>(initGroups(product))
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `${restaurantId}/${Date.now()}.${ext}`
+    const { error: uploadErr } = await supabase.storage
+      .from('product-images')
+      .upload(path, file, { upsert: true })
+    if (!uploadErr) {
+      const { data } = supabase.storage.from('product-images').getPublicUrl(path)
+      setImageUrl(data.publicUrl)
+    }
+    setUploading(false)
+    // Reset input so same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   const handleSave = async () => {
     if (!name.trim()) { setError('El nombre es obligatorio'); return }
@@ -195,16 +215,57 @@ export default function ProductFormModal({ restaurantId, categoryId, categories,
             />
           </div>
 
-          {/* Image URL */}
+          {/* Image upload */}
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">URL de imagen</label>
+            <label className="block text-xs font-medium text-gray-500 mb-2">Imagen del producto</label>
             <input
-              type="url"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://..."
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none"
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              className="hidden"
+              onChange={handleImageUpload}
             />
+            {imageUrl ? (
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imageUrl}
+                  alt="Imagen del producto"
+                  className="w-full h-40 object-cover rounded-xl border border-gray-200"
+                />
+                <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/40 rounded-xl opacity-0 hover:opacity-100 transition-opacity">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="bg-white text-gray-800 text-xs font-semibold px-3 py-1.5 rounded-lg"
+                  >
+                    {uploading ? 'Subiendo...' : 'Cambiar'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImageUrl('')}
+                    className="bg-red-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg"
+                  >
+                    Quitar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="w-full h-32 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-gray-300 hover:text-gray-500 transition-colors"
+              >
+                {uploading
+                  ? <Loader2 size={22} className="animate-spin" />
+                  : <ImagePlus size={22} />
+                }
+                <span className="text-xs">{uploading ? 'Subiendo imagen...' : 'Toca para subir una foto'}</span>
+                <span className="text-xs text-gray-300">JPG, PNG o WebP · máx. 5 MB</span>
+              </button>
+            )}
           </div>
 
           {/* Addon groups */}
