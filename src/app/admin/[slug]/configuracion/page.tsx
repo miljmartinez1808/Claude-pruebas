@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
+import { useEffect, useState, use, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Restaurant } from '@/types'
-import { Save, Store, Clock, CreditCard, Link2 } from 'lucide-react'
+import { Save, Store, Clock, CreditCard, Link2, ImagePlus, Loader2, X } from 'lucide-react'
+import Image from 'next/image'
 
 // ─── Sub-components defined OUTSIDE to avoid remount on every keystroke ────────
 
@@ -56,6 +57,97 @@ const COLORS = [
   { label: 'Rosa',     value: '#EC4899' },
   { label: 'Negro',    value: '#111827' },
 ]
+
+// ─── Image upload field (logo / banner) ───────────────────────────────────────
+
+interface ImageUploadFieldProps {
+  label: string
+  url: string
+  onChange: (url: string) => void
+  restaurantId: string
+  pathKey: string          // e.g. 'logo' | 'banner'
+  aspectClass?: string     // Tailwind class for height, e.g. 'h-28' | 'h-16 w-16'
+  rounded?: boolean
+}
+
+function ImageUploadField({
+  label, url, onChange, restaurantId, pathKey, aspectClass = 'h-28', rounded = false,
+}: ImageUploadFieldProps) {
+  const supabase = createClient()
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `restaurants/${restaurantId}/${pathKey}.${ext}`
+    const { error } = await supabase.storage
+      .from('product-images')
+      .upload(path, file, { upsert: true })
+    if (!error) {
+      const { data } = supabase.storage.from('product-images').getPublicUrl(path)
+      onChange(data.publicUrl)
+    }
+    setUploading(false)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  const roundedClass = rounded ? 'rounded-full' : 'rounded-xl'
+
+  return (
+    <Field label={label}>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/jpg,image/png,image/webp"
+        className="hidden"
+        onChange={handleUpload}
+      />
+      {url ? (
+        <div className="relative inline-block">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={url}
+            alt={label}
+            className={`${aspectClass} ${roundedClass} object-cover border border-gray-200`}
+          />
+          <div className={`absolute inset-0 flex items-center justify-center gap-2 bg-black/40 ${roundedClass} opacity-0 hover:opacity-100 transition-opacity`}>
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="bg-white text-gray-800 text-xs font-semibold px-3 py-1.5 rounded-lg shadow"
+            >
+              {uploading ? 'Subiendo...' : 'Cambiar'}
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              className="bg-red-500 text-white text-xs font-semibold p-1.5 rounded-lg shadow"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          className={`w-full ${aspectClass} border-2 border-dashed border-gray-200 ${roundedClass} flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-gray-300 hover:text-gray-500 transition-colors`}
+        >
+          {uploading
+            ? <Loader2 size={20} className="animate-spin" />
+            : <ImagePlus size={20} />
+          }
+          <span className="text-xs">{uploading ? 'Subiendo...' : 'Toca para subir imagen'}</span>
+        </button>
+      )}
+    </Field>
+  )
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -226,12 +318,31 @@ export default function ConfiguracionPage({ params }: Props) {
 
       {/* Apariencia */}
       <Section icon={Store} title="Apariencia">
-        <Field label="URL del banner (imagen de fondo)">
-          <Input value={bannerUrl} onChange={setBannerUrl} placeholder="https://..." />
-        </Field>
-        <Field label="URL del logo">
-          <Input value={logoUrl} onChange={setLogoUrl} placeholder="https://..." />
-        </Field>
+        <ImageUploadField
+          label="Banner (imagen de fondo)"
+          url={bannerUrl}
+          onChange={setBannerUrl}
+          restaurantId={restaurant.id}
+          pathKey="banner"
+          aspectClass="h-28 w-full"
+          rounded={false}
+        />
+        <div className="flex items-end gap-4 mb-3">
+          <div className="flex-shrink-0">
+            <ImageUploadField
+              label="Logo del negocio"
+              url={logoUrl}
+              onChange={setLogoUrl}
+              restaurantId={restaurant.id}
+              pathKey="logo"
+              aspectClass="h-20 w-20"
+              rounded={true}
+            />
+          </div>
+          {logoUrl && (
+            <p className="text-xs text-gray-400 mb-1">Toca la imagen para cambiarla</p>
+          )}
+        </div>
         <Field label="Color principal">
           <div className="flex flex-wrap gap-2 mt-1">
             {COLORS.map((c) => (
