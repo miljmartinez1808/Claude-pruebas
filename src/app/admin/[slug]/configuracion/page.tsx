@@ -3,11 +3,48 @@
 import { useEffect, useState, use } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Restaurant } from '@/types'
-import { Save, Store, Clock, CreditCard, Bell, Link2 } from 'lucide-react'
+import { Save, Store, Clock, CreditCard, Link2 } from 'lucide-react'
 
-interface Props {
-  params: Promise<{ slug: string }>
+// ─── Sub-components defined OUTSIDE to avoid remount on every keystroke ────────
+
+function Section({ icon: Icon, title, children }: {
+  icon: React.ElementType; title: string; children: React.ReactNode
+}) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
+      <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+        <Icon size={18} className="text-yellow-500" />
+        <h2 className="font-semibold text-gray-800 text-sm">{title}</h2>
+      </div>
+      {children}
+    </div>
+  )
 }
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="mb-3">
+      <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
+      {children}
+    </div>
+  )
+}
+
+function Input({ value, onChange, placeholder, type = 'text' }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; type?: string
+}) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+    />
+  )
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const COLORS = [
   { label: 'Amarillo', value: '#FBBF24' },
@@ -20,6 +57,12 @@ const COLORS = [
   { label: 'Negro',    value: '#111827' },
 ]
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+interface Props {
+  params: Promise<{ slug: string }>
+}
+
 export default function ConfiguracionPage({ params }: Props) {
   const { slug } = use(params)
   const supabase = createClient()
@@ -28,7 +71,6 @@ export default function ConfiguracionPage({ params }: Props) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  // Form state
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [address, setAddress] = useState('')
@@ -65,7 +107,7 @@ export default function ConfiguracionPage({ params }: Props) {
       setBankAccount(data.bank_account || '')
       setPaymentMethods(data.payment_methods || ['efectivo'])
     })
-  }, [slug])
+  }, [slug]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const togglePayment = (method: string) => {
     setPaymentMethods((prev) =>
@@ -100,35 +142,6 @@ export default function ConfiguracionPage({ params }: Props) {
 
   const menuUrl = typeof window !== 'undefined' ? `${window.location.origin}/${slug}` : `/${slug}`
 
-  const Section = ({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) => (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
-      <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
-        <Icon size={18} className="text-yellow-500" />
-        <h2 className="font-semibold text-gray-800 text-sm">{title}</h2>
-      </div>
-      {children}
-    </div>
-  )
-
-  const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div className="mb-3">
-      <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
-      {children}
-    </div>
-  )
-
-  const Input = ({ value, onChange, placeholder, type = 'text' }: {
-    value: string; onChange: (v: string) => void; placeholder?: string; type?: string
-  }) => (
-    <input
-      type={type}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
-    />
-  )
-
   if (!restaurant) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -151,7 +164,7 @@ export default function ConfiguracionPage({ params }: Props) {
         </button>
       </div>
 
-      {/* Link del menú */}
+      {/* Enlace del menú */}
       <Section icon={Link2} title="Tu enlace de menú">
         <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2.5">
           <span className="text-sm text-blue-500 truncate flex-1">{menuUrl}</span>
@@ -165,7 +178,7 @@ export default function ConfiguracionPage({ params }: Props) {
         <p className="text-xs text-gray-400 mt-1">Comparte este enlace con tus clientes o ponlo en tu QR</p>
       </Section>
 
-      {/* Estado */}
+      {/* Información del negocio */}
       <Section icon={Store} title="Información del negocio">
         <div className="flex items-center justify-between mb-4 p-3 bg-gray-50 rounded-lg">
           <div>
@@ -234,12 +247,12 @@ export default function ConfiguracionPage({ params }: Props) {
         </Field>
       </Section>
 
-      {/* Pagos */}
+      {/* Formas de pago */}
       <Section icon={CreditCard} title="Formas de pago">
         <Field label="Métodos habilitados">
           <div className="flex gap-3">
             {['efectivo', 'transferencia'].map((m) => (
-              <label key={m} className="flex items-center gap-2 cursor-pointer text-sm capitalize">
+              <label key={m} className="flex items-center gap-2 cursor-pointer text-sm capitalize text-gray-700">
                 <input
                   type="checkbox"
                   checked={paymentMethods.includes(m)}
