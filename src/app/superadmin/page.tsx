@@ -109,7 +109,12 @@ function CreateClientModal({ onClose, onCreated }: { onClose: () => void; onCrea
       return
     }
 
-    setSuccess({ slug: data.slug, email: data.email })
+    if (data?.error) {
+      setError(data.error)
+      return
+    }
+
+    setSuccess({ slug, email: email.trim() })
     onCreated()
   }
 
