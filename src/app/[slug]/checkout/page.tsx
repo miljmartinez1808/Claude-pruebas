@@ -210,7 +210,7 @@ export default function CheckoutPage({ params }: Props) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Tu nombre"
-            className={`w-full border rounded-lg pl-9 pr-4 py-3 text-sm focus:outline-none ${errors.name ? 'border-red-400' : 'border-gray-200'}`}
+            className={`w-full border rounded-lg pl-9 pr-4 py-3 text-sm text-gray-900 bg-white focus:outline-none ${errors.name ? 'border-red-400' : 'border-gray-200'}`}
           />
           {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
         </div>
@@ -223,7 +223,7 @@ export default function CheckoutPage({ params }: Props) {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="Tu celular"
-            className={`w-full border rounded-lg pl-9 pr-4 py-3 text-sm focus:outline-none ${errors.phone ? 'border-red-400' : 'border-gray-200'}`}
+            className={`w-full border rounded-lg pl-9 pr-4 py-3 text-sm text-gray-900 bg-white focus:outline-none ${errors.phone ? 'border-red-400' : 'border-gray-200'}`}
           />
           {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
         </div>
@@ -237,7 +237,7 @@ export default function CheckoutPage({ params }: Props) {
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Tu dirección"
-              className={`w-full border rounded-lg pl-9 pr-4 py-3 text-sm focus:outline-none ${errors.address ? 'border-red-400' : 'border-gray-200'}`}
+              className={`w-full border rounded-lg pl-9 pr-4 py-3 text-sm text-gray-900 bg-white focus:outline-none ${errors.address ? 'border-red-400' : 'border-gray-200'}`}
             />
             {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address}</p>}
           </div>
@@ -286,7 +286,7 @@ export default function CheckoutPage({ params }: Props) {
               value={amountTendered}
               onChange={(e) => setAmountTendered(e.target.value)}
               placeholder="¿Con cuánto paga? (opcional)"
-              className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none"
+              className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none"
             />
           </div>
         )}
@@ -317,7 +317,7 @@ export default function CheckoutPage({ params }: Props) {
             onChange={(e) => setComment(e.target.value)}
             placeholder="Ingrese un comentario(opcional)"
             rows={3}
-            className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm resize-none focus:outline-none"
+            className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-900 bg-white resize-none focus:outline-none"
           />
         </div>
 
