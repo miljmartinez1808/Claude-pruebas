@@ -84,7 +84,6 @@ export default function CheckoutPage({ params }: Props) {
       // DEFINER so it can see existing orders, and retries on collision).
       const { data: result, error: placeErr } = await supabase.rpc('place_order', {
         p_restaurant_id:    restaurant.id,
-        p_order_number:     0, // ignored - assigned inside place_order
         p_customer_name:    name.trim(),
         p_customer_phone:   phone.trim(),
         p_customer_address: address.trim() || null,
