@@ -80,14 +80,11 @@ export default function CheckoutPage({ params }: Props) {
 
     setSubmitting(true)
     try {
-      const { data: nextNum } = await supabase.rpc('next_order_number', {
-        p_restaurant_id: restaurant.id,
-      })
-      const orderNumber = nextNum || Math.floor(Math.random() * 90000000 + 10000000)
-
+      // place_order assigns the order number server-side (it runs as SECURITY
+      // DEFINER so it can see existing orders, and retries on collision).
       const { data: result, error: placeErr } = await supabase.rpc('place_order', {
         p_restaurant_id:    restaurant.id,
-        p_order_number:     orderNumber,
+        p_order_number:     0, // ignored - assigned inside place_order
         p_customer_name:    name.trim(),
         p_customer_phone:   phone.trim(),
         p_customer_address: address.trim() || null,
@@ -112,6 +109,8 @@ export default function CheckoutPage({ params }: Props) {
 
       if (placeErr) throw placeErr
       if (!result) throw new Error('No se pudo crear la orden. Intenta de nuevo.')
+
+      const orderNumber = (result as { order_number: number }).order_number
 
       try {
         localStorage.removeItem(CART_KEY(slug))
