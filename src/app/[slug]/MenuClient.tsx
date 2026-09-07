@@ -33,15 +33,15 @@ export default function MenuClient({ restaurant, categories, products, slug }: P
     } catch {}
   }, [slug])
 
-  // Persist cart whenever it changes
-  useEffect(() => {
-    try {
-      localStorage.setItem(CART_KEY(slug), JSON.stringify(cartItems))
-    } catch {}
-  }, [cartItems, slug])
-
+  // Persist on change rather than in an effect. An effect would run on mount
+  // with the still-empty initial cart and overwrite the saved one before the
+  // restore above landed, briefly leaving an empty cart on disk.
   const handleAddToCart = (item: CartItem) => {
-    setCartItems((prev) => [...prev, item])
+    const next = [...cartItems, item]
+    setCartItems(next)
+    try {
+      localStorage.setItem(CART_KEY(slug), JSON.stringify(next))
+    } catch {}
   }
 
   const cartTotal = cartItems.reduce((sum, i) => sum + i.subtotal, 0)
