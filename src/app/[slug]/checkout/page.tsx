@@ -103,10 +103,11 @@ export default function CheckoutPage({ params }: Props) {
         .select()
         .single()
 
-      if (orderErr || !order) throw orderErr
+      if (orderErr) throw orderErr
+      if (!order) throw new Error('No se pudo crear la orden. Intenta de nuevo.')
 
       for (const item of cartItems) {
-        const { data: oi } = await supabase
+        const { data: oi, error: oiErr } = await supabase
           .from('order_items')
           .insert({
             order_id: order.id,
@@ -119,16 +120,21 @@ export default function CheckoutPage({ params }: Props) {
           .select()
           .single()
 
+        if (oiErr) throw oiErr
+
         if (oi && item.addons.length > 0) {
-          await supabase.from('order_item_addons').insert(
-            item.addons.map((a) => ({
-              order_item_id: oi.id,
-              addon_item_id: a.addon_item_id,
-              addon_name: a.addon_name,
-              price: a.price,
-              quantity: a.quantity,
-            }))
-          )
+          const { error: addonsErr } = await supabase
+            .from('order_item_addons')
+            .insert(
+              item.addons.map((a) => ({
+                order_item_id: oi.id,
+                addon_item_id: a.addon_item_id,
+                addon_name: a.addon_name,
+                price: a.price,
+                quantity: a.quantity,
+              }))
+            )
+          if (addonsErr) throw addonsErr
         }
       }
 
@@ -165,9 +171,12 @@ export default function CheckoutPage({ params }: Props) {
       const waUrl = buildWhatsAppUrl(restaurant.whatsapp_number, msg)
       window.open(waUrl, '_blank')
       setOrderPlaced({ orderNumber })
-    } catch (err) {
-      console.error(err)
-      alert('Ocurrió un error al enviar el pedido. Intenta de nuevo.')
+    } catch (err: unknown) {
+      console.error('Checkout error:', err)
+      const msg = err instanceof Error
+        ? err.message
+        : (err as { message?: string })?.message || 'Error desconocido'
+      alert(`Ocurrió un error al enviar el pedido.\n\n${msg}\n\nIntenta de nuevo o borra el caché del browser.`)
     } finally {
       setSubmitting(false)
     }
