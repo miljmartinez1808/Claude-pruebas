@@ -1,6 +1,5 @@
 'use client'
 
-import { ShoppingCart, RefreshCw } from 'lucide-react'
 import { CartItem } from '@/types'
 import { formatCurrency } from '@/lib/utils'
 import Link from 'next/link'

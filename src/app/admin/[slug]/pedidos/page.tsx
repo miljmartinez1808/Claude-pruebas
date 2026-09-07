@@ -183,7 +183,7 @@ export default function PedidosPage({ params }: Props) {
                   </div>
 
                   {order.notes && (
-                    <p className="text-xs text-gray-400 mt-1 italic">"{order.notes}"</p>
+                    <p className="text-xs text-gray-400 mt-1 italic">&quot;{order.notes}&quot;</p>
                   )}
                 </div>
 

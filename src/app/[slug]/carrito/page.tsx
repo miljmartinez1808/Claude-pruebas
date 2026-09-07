@@ -134,7 +134,7 @@ export default function CartPage({ params }: Props) {
                     </div>
                   )}
                   {item.notes && (
-                    <p className="text-xs text-gray-400 mt-0.5 italic">"{item.notes}"</p>
+                    <p className="text-xs text-gray-400 mt-0.5 italic">&quot;{item.notes}&quot;</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2 ml-3">
