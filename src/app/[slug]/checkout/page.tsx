@@ -85,58 +85,33 @@ export default function CheckoutPage({ params }: Props) {
       })
       const orderNumber = nextNum || Math.floor(Math.random() * 90000000 + 10000000)
 
-      const { data: order, error: orderErr } = await supabase
-        .from('orders')
-        .insert({
-          restaurant_id: restaurant.id,
-          order_number: orderNumber,
-          customer_name: name.trim(),
-          customer_phone: phone.trim(),
-          customer_address: address.trim() || null,
-          delivery_type: deliveryType,
-          payment_method: paymentMethod,
-          amount_tendered: amountTendered ? parseInt(amountTendered) : null,
-          total,
-          notes: comment.trim() || null,
-          status: 'pendiente',
-        })
-        .select()
-        .single()
+      const { data: result, error: placeErr } = await supabase.rpc('place_order', {
+        p_restaurant_id:    restaurant.id,
+        p_order_number:     orderNumber,
+        p_customer_name:    name.trim(),
+        p_customer_phone:   phone.trim(),
+        p_customer_address: address.trim() || null,
+        p_delivery_type:    deliveryType,
+        p_payment_method:   paymentMethod,
+        p_amount_tendered:  amountTendered ? parseInt(amountTendered) : null,
+        p_total:            total,
+        p_notes:            comment.trim() || null,
+        p_items: cartItems.map((item) => ({
+          product_id:   item.product_id,
+          product_name: item.product_name,
+          quantity:     item.quantity,
+          unit_price:   item.unit_price,
+          notes:        item.notes || '',
+          addons:       item.addons.map((a) => ({
+            addon_item_id: a.addon_item_id,
+            addon_name:    a.addon_name,
+            price:         a.price,
+          })),
+        })),
+      })
 
-      if (orderErr) throw orderErr
-      if (!order) throw new Error('No se pudo crear la orden. Intenta de nuevo.')
-
-      for (const item of cartItems) {
-        const { data: oi, error: oiErr } = await supabase
-          .from('order_items')
-          .insert({
-            order_id: order.id,
-            product_id: item.product_id,
-            product_name: item.product_name,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            notes: item.notes || null,
-          })
-          .select()
-          .single()
-
-        if (oiErr) throw oiErr
-
-        if (oi && item.addons.length > 0) {
-          const { error: addonsErr } = await supabase
-            .from('order_item_addons')
-            .insert(
-              item.addons.map((a) => ({
-                order_item_id: oi.id,
-                addon_item_id: a.addon_item_id,
-                addon_name: a.addon_name,
-                price: a.price,
-                quantity: a.quantity,
-              }))
-            )
-          if (addonsErr) throw addonsErr
-        }
-      }
+      if (placeErr) throw placeErr
+      if (!result) throw new Error('No se pudo crear la orden. Intenta de nuevo.')
 
       try {
         localStorage.removeItem(CART_KEY(slug))
