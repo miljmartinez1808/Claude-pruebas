@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency } from '@/lib/utils'
@@ -359,14 +359,17 @@ export default function SuperAdminPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [search, setSearch] = useState('')
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     const { data: result } = await supabase.rpc('get_superadmin_dashboard')
     setData(result as DashboardData)
     setLoading(false)
-  }
+  }, [supabase])
 
-  useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // load() flips `loading` synchronously. On mount it is already true, so React
+  // bails out without a re-render; the rule cannot see that.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { load() }, [load])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()

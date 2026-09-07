@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { X, Minus, Plus, Expand } from 'lucide-react'
 import { Product, CartAddon, CartItem } from '@/types'
 import { formatCurrency, generateCartItemId } from '@/lib/utils'
@@ -17,15 +17,6 @@ export default function ProductModal({ product, primaryColor, onClose, onAdd }: 
   const [notes, setNotes] = useState('')
   const [addonQtys, setAddonQtys] = useState<Record<string, number>>({})
   const [imgFull, setImgFull] = useState(false)
-
-  useEffect(() => {
-    if (product) {
-      setQuantity(1)
-      setNotes('')
-      setAddonQtys({})
-      setImgFull(false)
-    }
-  }, [product])
 
   if (!product) return null
 

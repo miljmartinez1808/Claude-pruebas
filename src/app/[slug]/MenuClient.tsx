@@ -26,6 +26,9 @@ export default function MenuClient({ restaurant, categories, products, slug }: P
   useEffect(() => {
     try {
       const saved = localStorage.getItem(CART_KEY(slug))
+      // Read after mount, not during render: the server renders an empty cart,
+      // so restoring it during render would cause a hydration mismatch.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (saved) setCartItems(JSON.parse(saved))
     } catch {}
   }, [slug])
@@ -92,6 +95,7 @@ export default function MenuClient({ restaurant, categories, products, slug }: P
       </p>
 
       <ProductModal
+        key={selectedProduct?.id ?? 'none'}
         product={selectedProduct}
         primaryColor={primaryColor}
         onClose={() => setSelectedProduct(null)}

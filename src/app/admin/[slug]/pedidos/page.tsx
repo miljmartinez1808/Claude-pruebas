@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
+import { useCallback, useEffect, useState, use } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Order } from '@/types'
 import { formatCurrency } from '@/lib/utils'
@@ -42,27 +42,9 @@ export default function PedidosPage({ params }: Props) {
     supabase.from('restaurants').select('id').eq('slug', slug).single().then(({ data }) => {
       if (data) setRestaurantId(data.id)
     })
-  }, [slug])
+  }, [slug, supabase])
 
-  useEffect(() => {
-    if (!restaurantId) return
-    loadOrders()
-
-    // Realtime subscription
-    const channel = supabase
-      .channel('orders-channel')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'orders',
-        filter: `restaurant_id=eq.${restaurantId}`,
-      }, () => loadOrders())
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  }, [restaurantId, filter])
-
-  async function loadOrders() {
+  const loadOrders = useCallback(async () => {
     if (!restaurantId) return
     setLoading(true)
 
@@ -82,7 +64,28 @@ export default function PedidosPage({ params }: Props) {
     const { data } = await query
     setOrders(data || [])
     setLoading(false)
-  }
+  }, [restaurantId, filter, supabase])
+
+  useEffect(() => {
+    if (!restaurantId) return
+    // loadOrders() sets `loading` synchronously. It already starts true, so on
+    // mount React bails out; on a filter change the flip is what we want.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadOrders()
+
+    // Realtime subscription
+    const channel = supabase
+      .channel('orders-channel')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'orders',
+        filter: `restaurant_id=eq.${restaurantId}`,
+      }, () => loadOrders())
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [restaurantId, loadOrders, supabase])
 
   const updateStatus = async (orderId: string, newStatus: string) => {
     await supabase.from('orders').update({ status: newStatus }).eq('id', orderId)

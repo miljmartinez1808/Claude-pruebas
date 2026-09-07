@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
+import { useCallback, useEffect, useState, use } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Category, Product } from '@/types'
 import { formatCurrency } from '@/lib/utils'
@@ -30,14 +30,9 @@ export default function MenuPage({ params }: Props) {
     supabase.from('restaurants').select('id').eq('slug', slug).single().then(({ data }) => {
       if (data) setRestaurantId(data.id)
     })
-  }, [slug])
+  }, [slug, supabase])
 
-  useEffect(() => {
-    if (!restaurantId) return
-    load()
-  }, [restaurantId])
-
-  async function load() {
+  const load = useCallback(async () => {
     const [{ data: cats }, { data: prods }] = await Promise.all([
       supabase.from('categories').select('*').eq('restaurant_id', restaurantId!).order('order'),
       supabase
@@ -48,7 +43,15 @@ export default function MenuPage({ params }: Props) {
     ])
     setCategories(cats || [])
     setProducts(prods || [])
-  }
+  }, [restaurantId, supabase])
+
+  useEffect(() => {
+    if (!restaurantId) return
+    // load() only touches state after its first await, so nothing is set
+    // synchronously here; the rule cannot follow that across the call.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load()
+  }, [restaurantId, load])
 
   const toggleAvailable = async (product: Product) => {
     await supabase.from('products').update({ is_available: !product.is_available }).eq('id', product.id)

@@ -42,9 +42,12 @@ export default function CartPage({ params }: Props) {
 
     try {
       const saved = localStorage.getItem(CART_KEY(slug))
+      // Read after mount, not during render: the server renders an empty cart,
+      // so restoring it during render would cause a hydration mismatch.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (saved) setCartItems(JSON.parse(saved))
     } catch {}
-  }, [slug])
+  }, [slug, supabase])
 
   const removeItem = (id: string) => {
     const updated = cartItems.filter((i) => i.id !== id)

@@ -47,11 +47,14 @@ export default function CheckoutPage({ params }: Props) {
     })
     try {
       const saved = localStorage.getItem(CART_KEY(slug))
-      if (saved) setCartItems(JSON.parse(saved))
       const dt = localStorage.getItem(`delivery_${slug}`)
+      // Read after mount, not during render: the server renders an empty cart,
+      // so restoring it during render would cause a hydration mismatch.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (saved) setCartItems(JSON.parse(saved))
       if (dt) setDeliveryType(dt as DeliveryType)
     } catch {}
-  }, [slug]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [slug, supabase])
 
   const total = cartItems.reduce((sum, i) => sum + i.subtotal, 0)
   const primaryColor = restaurant?.primary_color || '#FBBF24'
