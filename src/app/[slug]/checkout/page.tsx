@@ -39,6 +39,7 @@ export default function CheckoutPage({ params }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [copied, setCopied] = useState(false)
   const [qrFull, setQrFull] = useState(false)
+  const [orderPlaced, setOrderPlaced] = useState<{ orderNumber: number } | null>(null)
 
   useEffect(() => {
     supabase.from('restaurants').select('*').eq('slug', slug).single().then(({ data }) => {
@@ -131,7 +132,10 @@ export default function CheckoutPage({ params }: Props) {
         }
       }
 
-      try { localStorage.removeItem(CART_KEY(slug)) } catch {}
+      try {
+        localStorage.removeItem(CART_KEY(slug))
+        localStorage.removeItem(`delivery_${slug}`)
+      } catch {}
 
       const msg = buildWhatsAppMessage({
         orderNumber,
@@ -160,6 +164,7 @@ export default function CheckoutPage({ params }: Props) {
 
       const waUrl = buildWhatsAppUrl(restaurant.whatsapp_number, msg)
       window.open(waUrl, '_blank')
+      setOrderPlaced({ orderNumber })
     } catch (err) {
       console.error(err)
       alert('Ocurrió un error al enviar el pedido. Intenta de nuevo.')
@@ -178,6 +183,62 @@ export default function CheckoutPage({ params }: Props) {
 
   const paymentLabel = paymentMethod === 'efectivo' ? 'Efectivo' : paymentMethod === 'transferencia' ? 'Transferencia' : ''
   const hasTransferInfo = restaurant.nequi_number || restaurant.nequi_qr_url || restaurant.bank_account
+
+  // ── Success screen ────────────────────────────────────────────────────────────
+  if (orderPlaced) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col">
+        {/* Restaurant header strip */}
+        <div className="relative h-28 bg-gray-800 flex-shrink-0">
+          {restaurant.banner_url && (
+            <Image src={restaurant.banner_url} alt={restaurant.name} fill className="object-cover opacity-60" />
+          )}
+          <div className="absolute -bottom-8 left-4 w-16 h-16 rounded-full border-4 border-white bg-white shadow overflow-hidden">
+            {restaurant.logo_url ? (
+              <Image src={restaurant.logo_url} alt="logo" width={64} height={64} className="object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white"
+                style={{ background: primaryColor }}>
+                {restaurant.name.charAt(0)}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Success content */}
+        <div className="flex-1 flex flex-col items-center justify-center px-6 pt-10 pb-8 text-center">
+          {/* Big checkmark */}
+          <div className="w-24 h-24 rounded-full flex items-center justify-center mb-6"
+            style={{ background: `${primaryColor}20` }}>
+            <span className="text-5xl">✅</span>
+          </div>
+
+          <h1 className="text-2xl font-black text-gray-900 mb-2">
+            ¡Pedido creado con éxito!
+          </h1>
+          <p className="text-gray-500 text-sm mb-1">
+            Orden <span className="font-bold text-gray-700">#{String(orderPlaced.orderNumber).padStart(8, '0')}</span>
+          </p>
+          <p className="text-gray-400 text-sm mb-8">
+            Se abrió WhatsApp para confirmar tu pedido con <span className="font-medium text-gray-600">{restaurant.name}</span>.
+          </p>
+
+          {/* CTA */}
+          <button
+            onClick={() => router.push(`/${slug}`)}
+            className="w-full max-w-xs py-4 rounded-2xl font-bold text-white text-base shadow-lg active:scale-95 transition-transform"
+            style={{ background: primaryColor }}
+          >
+            🍽️ Hacer un nuevo pedido
+          </button>
+
+          <p className="text-center text-xs text-gray-400 mt-8">
+            Tecnología <span className="text-blue-400 font-medium">FastMenu</span>
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <>
